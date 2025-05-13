@@ -13,9 +13,8 @@ DeepPlantAllergy integrates **ESM1b** transformer-based protein embeddings as in
 
 Beyond classification, DeepPlantAllergy offers **interpretability** by pinpointing allergenic regions within protein sequences using **Integrated Gradients**, providing valuable insights into the biological mechanisms of allergenicity.
 
-<div align="center">
-  <img src="Pipeline_new.pdf" alt="Pipeline Overview" width="600"/>
-</div>
+[Pipeline_new.pdf](https://github.com/user-attachments/files/20186678/Pipeline_new.pdf)
+
 
 ## 📌 Overview of Pipeline Steps
 
@@ -44,7 +43,7 @@ python preprocess.py input_fasta.fasta
 
 **Outputs:**
 - Cleaned FASTA file
-- `.txt` file listing removed sequences
+- `.txt` file listing removed sequences headers
 
 ---
 
@@ -148,7 +147,7 @@ python align_epitope.py \
 - Conda environments:
   - `bio_embeddings`
   - `bio_transformers`
-- Dependencies listed in environment YAML files (not provided here but should be added to repo)
+- Dependencies listed requirements
 
 ---
 

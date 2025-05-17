@@ -30,6 +30,7 @@ Beyond classification, DeepPlantAllergy offers **interpretability** by pinpointi
 ---
 
 ## 📂 1. Preprocessing
+It takes a FASTA file as input and performs quality control on the sequences. It removes duplicate sequences,  those longer than 1000 amino acid residues, and  sequences containing non-standard amino acid characters. The module outputs a cleaned FASTA file containing the accepted sequences, along with a text file listing the sequence headers that were removed.
 
 Removes:
 - Duplicate sequences
@@ -48,6 +49,7 @@ python preprocess.py input_fasta.fasta
 ---
 
 ## 🔬 2. Embeddings Generation
+It computes sequence embeddings from protein sequences using a selected pretrained protein language model (onehot, seqvec, esm or protbert). It requires the user to activate the relevant Conda environment prior to execution (bio_embeddings for onehot, seqvec and esm, bio_transformers for protbert); the environment and its dependencies must be installed beforehand. The module takes the preprocessed FASTA file as input and generates per-sequence embeddings based on the specified model. It outputs two NumPy .npy files: one containing the embeddings and the other containing the corresponding sequence identifiers.
 
 Generates embeddings using the selected model:
 - `onehot`
@@ -71,8 +73,7 @@ python generate_emb.py --model model_name preprocessed_input.fasta
 ---
 
 ## 🔍 3. Allergenicity Prediction
-
-Uses a trained model to classify sequences based on embeddings.
+It uses one of the trained models to classify protein sequences based on their previously generated embeddings. It takes as input two NumPy .npy files: one containing the sequence embeddings and the other containing the corresponding sequence identifiers. The user specifies the embedding model used during embedding generation to ensure compatibility with the correct trained model. The module outputs a CSV file listing the sequence identifiers, their corresponding probability (predicted probability of allergenicity), prediction (predicted class label), and comment where probability higher than 0.8 is considered "High probability allergen", probability between 0.5 and 0.8, "potentially allergen" , and is labeled "probably not allergen" when probability is lower than 0.5.
 
 **Command:**
 ```bash
@@ -88,7 +89,7 @@ python predict.py --model model_name --input_emb embeddings.npy --input_ids sequ
 ---
 
 ## 🧠 4. Residue Attribution
-
+It uses the prediction model and Integrated Gradient to compute attributions to each residue, it returns the sum of raw attribution across embedding dimensions, as well as smoothed attributions and normalized attributions. It outputs a CSV file per sequence listing the residues and their corresponding attributions.
 Applies Integrated Gradients to identify residue-level contributions.
 
 **Command:**
@@ -107,8 +108,7 @@ python compute_attribution.py \
 ---
 
 ## 🧬 5. Motif Construction
-
-Extracts potential allergenic motifs from high-attribution regions.
+Processes raw attribution scores to identify potential motifs. The user can define parameters such as max_gap (default = 1) and max_motif_length (default = 20). The output consists of two CSV files: one with raw signal data and another with merged motifs, including motif start and end positions, length, and gap-related statistics such as gap_num and gap_density.
 
 **Command:**
 ```bash
@@ -126,8 +126,23 @@ python motif_extract.py \
 ---
 
 ## 🔗 6. Epitope Alignment
+Aligns the extracted motifs to experimentally validated epitopes retrieved from the [Immune Epitope Database (IEDB)](https://www.iedb.org/), using global sequence alignment with a custom scoring scheme:
 
-Aligns predicted motifs to validated epitopes from IEDB.
+- Match: +2  
+- Mismatch: –1  
+- Gap opening: –2  
+- Gap extension: –0.5  
+
+The user provides the CSV file of extracted motifs along with the IEDB Immunome Browser export table for the target protein. The output includes the best-matching epitope–motif pair along with the following metrics:
+
+- **Gap Density**:  
+  Proportion of residues within a motif that have negative attribution scores, indicating gaps. A higher gap density suggests a more fragmented and less cohesive motif.
+
+- **Epitope Coverage**:  
+  Fraction of epitope residues aligned with the motif. This measures how well the motif spans the epitope, even with gaps.
+
+- **Motif-to-Epitope Ratio**:  
+  Ratio of the motif's length to the epitope’s length. This reflects whether the motif is appropriately sized relative to the target and serves as an indirect indicator of model precision.
 
 **Command:**
 ```bash

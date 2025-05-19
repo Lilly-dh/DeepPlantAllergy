@@ -168,4 +168,4 @@ python align_epitope.py \
 
 ## 🧾 Citation
 
-If you use this pipeline in your research, please cite our upcoming manuscript submitted to *Nucleic Acids Research*.
+If you use this pipeline in your research, please cite our upcoming manuscript submitted to *Journal Name*.

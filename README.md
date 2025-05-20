@@ -33,12 +33,16 @@ Beyond classification, DeepPlantAllergy offers **interpretability** by pinpointi
 
 To get started with this project, you can clone the repository and install its dependencies as follows:
 
-```bash
+
 # Clone the repository
+```bash
 git clone https://github.com/Lilly-dh/DeepPlantAllergy.git
+```
 
 # Install required Python packages
+```bash
 pip install -r requirements.txt
+```
 
 To generate embeddings, we recommend installing `bio_embeddings` and `bio_transformers` in separate Conda environments to avoid potential dependency conflicts. However, the model has also been successfully run in the base environment without environment separation.
 
@@ -46,6 +50,47 @@ For more details on installation and usage, please refer to the official reposit
 
     bio_embeddings
     bio_transformers
+
+## 🚀 Training and Testing the Model
+
+### 📦 Preparing Embeddings Before Training
+
+Before training the model, you need to generate embeddings from your protein sequences.
+
+#### Input Data Format
+
+- Your protein sequences should be in a **FASTA** format.
+- The corresponding labels (e.g., allergen/non-allergen) must be provided in a **CSV** file with the following columns:
+
+| Seq_ID | Sequence | Label |
+|--------|----------|-------|
+
+- The `Seq_ID` must match between the FASTA file and the CSV file.
+
+#### Generating Embeddings
+
+Use the embedding script to convert your sequences into embeddings compatible with the model. This script will output `.npy` files for embeddings and labels which will be used for training.
+
+Example command:
+
+```bash
+python embed.py --fasta path/to/sequences.fasta --labels path/to/labels.csv --embedding_model esm --output_dir path/to/output/
+
+
+### Training
+
+To train the model with your dataset, run the training script with the required arguments. For example:
+
+```bash
+python train.py --train_embs path/to/train_embeddings.npy \
+                --train_labels path/to/train_labels.npy \
+                --test_embs path/to/test_embeddings.npy \
+                --test_labels path/to/test_labels.npy \
+                --batch_size 16 \
+                --learning_rate 0.001 \
+                --num_epochs 50 \
+                --embedding_dim 1024
+
 
 ## 📌 Overview of Pipeline Steps
 

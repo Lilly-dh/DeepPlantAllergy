@@ -13,7 +13,7 @@ DeepPlantAllergy integrates **ESM1b** transformer-based protein embeddings as in
 
 Beyond classification, DeepPlantAllergy offers **interpretability** by pinpointing allergenic regions within protein sequences using **Integrated Gradients**, providing valuable insights into the biological mechanisms of allergenicity.
 
-## ⚙️ Requirements
+## ⚙️ 1- Requirements
 
 - **Platform requirement**  
   We trained and tested the model on Linux OS (Ubuntu). Your operating system must be supported by the deep learning framework and related libraries used by the model. For example, our model was implemented using PyTorch 2.4.0+cu121. Please check PyTorch's official OS compatibility to ensure your OS (e.g., Ubuntu, Windows, macOS) is supported.  
@@ -29,7 +29,7 @@ Beyond classification, DeepPlantAllergy offers **interpretability** by pinpointi
     - `bio_transformers`  
   Additional dependencies are listed in the `requirements.txt` file.
 
-## 🖥️ Installation
+## 🖥️ 2- Installation
 
 To get started with this project, you can clone the repository and install its dependencies as follows:
 
@@ -51,33 +51,45 @@ For more details on installation and usage, please refer to the official reposit
     bio_embeddings
     bio_transformers
 
-## 🚀 Training and Testing the Model
+## 🧠 3 | Training and Testing the Model
 
-### 📦 Preparing Embeddings Before Training
+### 📦 3.1 | Preparing Embeddings Before Training
 
 Before training the model, you need to generate embeddings from your protein sequences.
 
 #### Input Data Format
 
-- Your protein sequences should be in a **FASTA** format.
-- The corresponding labels (e.g., allergen/non-allergen) must be provided in a **CSV** file with the following columns:
+Your protein sequences must be provided in a **CSV** file with the following columns:
 
 | Seq_ID | Sequence | Label |
 |--------|----------|-------|
 
-- The `Seq_ID` must match between the FASTA file and the CSV file.
+- `Seq_ID`: Unique identifier for each protein sequence  
+- `Sequence`: The amino acid sequence  
+- `Label`: The corresponding binary label (e.g., `1` for allergen, `0` for non-allergen)
 
 #### Generating Embeddings
 
-Use the embedding script to convert your sequences into embeddings compatible with the model. This script will output `.npy` files for embeddings and labels which will be used for training.
+Use the provided script to convert your sequences into embeddings compatible with the model.
 
 Example command:
 
 ```bash
-python embed.py --fasta path/to/sequences.fasta --labels path/to/labels.csv --embedding_model esm --output_dir path/to/output/
+python generate_emb.py --model Model_name sequence.csv
+```
+Replace Model_name with one of the supported embedding models (OneHot, SeqVec, ProtBert, ESM) and sequence.csv with your formatted input file.
 
+This script will generate the following .npy files:
 
-### Training
+    *_embeddings.npy — Sequence embeddings
+
+    *_labels.npy — Corresponding labels
+
+    *_ids.npy — Sequence identifiers
+
+These output files are required as inputs for the training and testing stages.
+
+### 📚 3.2 | Training
 
 To train the model with your dataset, run the training script with the required arguments. For example:
 
@@ -90,9 +102,13 @@ python train.py --train_embs path/to/train_embeddings.npy \
                 --learning_rate 0.001 \
                 --num_epochs 50 \
                 --embedding_dim 1024
+```
+### 📈 3.3| Testing
 
+To train the model with your dataset, run the training script with the required arguments. For example:
 
-## 📌 Overview of Pipeline Steps
+## 🚀 4 | Running Predictions
+
 
 | Step | Description | Script |
 |------|-------------|--------|
@@ -105,7 +121,7 @@ python train.py --train_embs path/to/train_embeddings.npy \
 
 ---
 
-## 📂 1. Preprocessing
+### 📂 1. Preprocessing
 It takes a FASTA file as input and performs quality control on the sequences. It removes duplicate sequences,  those longer than 1000 amino acid residues, and  sequences containing non-standard amino acid characters. The module outputs a cleaned FASTA file containing the accepted sequences, along with a text file listing the sequence headers that were removed.
 
 Removes:
@@ -124,7 +140,7 @@ python preprocess.py input_fasta.fasta
 
 ---
 
-## 🔬 2. Embeddings Generation
+### 🔬 2. Embeddings Generation
 It computes sequence embeddings from protein sequences using a selected pretrained protein language model (onehot, seqvec, esm or protbert). It requires the user to activate the relevant Conda environment prior to execution (bio_embeddings for onehot, seqvec and esm, bio_transformers for protbert); the environment and its dependencies must be installed beforehand. The module takes the preprocessed FASTA file as input and generates per-sequence embeddings based on the specified model. It outputs two NumPy .npy files: one containing the embeddings and the other containing the corresponding sequence identifiers.
 
 Generates embeddings using the selected model:
@@ -148,7 +164,7 @@ python generate_emb.py --model model_name preprocessed_input.fasta
 
 ---
 
-## 🔍 3. Allergenicity Prediction
+### 🔍 3. Allergenicity Prediction
 It uses one of the trained models to classify protein sequences based on their previously generated embeddings. It takes as input two NumPy .npy files: one containing the sequence embeddings and the other containing the corresponding sequence identifiers. The user specifies the embedding model used during embedding generation to ensure compatibility with the correct trained model. The module outputs a CSV file listing the sequence identifiers, their corresponding probability (predicted probability of allergenicity), prediction (predicted class label), and comment where probability higher than 0.8 is considered "High probability allergen", probability between 0.5 and 0.8, "potentially allergen" , and is labeled "probably not allergen" when probability is lower than 0.5.
 
 **Command:**
@@ -164,7 +180,7 @@ python predict.py --model model_name --input_emb embeddings.npy --input_ids sequ
 
 ---
 
-## 🧠 4. Residue Attribution
+### 🧠 4. Residue Attribution
 It uses the prediction model and Integrated Gradient to compute attributions to each residue, it returns the sum of raw attribution across embedding dimensions, as well as smoothed attributions and normalized attributions. It outputs a CSV file per sequence listing the residues and their corresponding attributions.
 Applies Integrated Gradients to identify residue-level contributions.
 
@@ -183,7 +199,7 @@ python compute_attribution.py \
 
 ---
 
-## 🧬 5. Motif Construction
+### 🧬 5. Motif Construction
 Processes raw attribution scores to identify potential motifs. The user can define parameters such as max_gap (default = 1) and max_motif_length (default = 20). The output consists of two CSV files: one with raw signal data and another with merged motifs, including motif start and end positions, length, and gap-related statistics such as gap_num and gap_density.
 
 **Command:**
@@ -201,7 +217,7 @@ python motif_extract.py \
 
 ---
 
-## 🔗 6. Epitope Alignment
+### 🔗 6. Epitope Alignment
 Aligns the extracted motifs to experimentally validated epitopes retrieved from the [Immune Epitope Database (IEDB)](https://www.iedb.org/), using global sequence alignment with a custom scoring scheme:
 
 - Match: +2  

@@ -34,12 +34,12 @@ Beyond classification, DeepPlantAllergy offers **interpretability** by pinpointi
 To get started with this project, you can clone the repository and install its dependencies as follows:
 
 
-# Clone the repository
+- **Clone the repository**
 ```bash
 git clone https://github.com/Lilly-dh/DeepPlantAllergy.git
 ```
 
-# Install required Python packages
+- **Install required Python packages**
 ```bash
 pip install -r requirements.txt
 ```
@@ -70,9 +70,7 @@ Your protein sequences must be provided in a **CSV** file with the following col
 
 #### Generating Embeddings
 
-Use the provided script to convert your sequences into embeddings compatible with the model.
-
-Example command:
+The module takes the formatted CSV file as input and generates per-sequence embeddings based on the specified model. It outputs three NumPy .npy files: one containing the embeddings, one containing the corresponding sequence identifiers and the other containing the corresponding labels.
 
 ```bash
 python generate_emb.py --model Model_name sequence.csv
@@ -91,7 +89,7 @@ These output files are required as inputs for the training and testing stages.
 
 ### 📚 3.2 | Training
 
-To train the model with your dataset, run the training script with the required arguments. For example:
+To train the model with your dataset, run the training script with the required arguments, embedding_dim should be provided depending on the embedding model (OneHot → 21, SeqVec → 1024, ProtBert → 1024, ESM → 1280). For example:
 
 ```bash
 python train.py --train_embs path/to/train_embeddings.npy \
@@ -105,7 +103,25 @@ python train.py --train_embs path/to/train_embeddings.npy \
 ```
 ### 📈 3.3| Testing
 
-To train the model with your dataset, run the training script with the required arguments. For example:
+After training, you can evaluate the model’s performance on a test set using the `test.py` script. Make sure to provide:
+
+- The test embeddings (`.npy`)
+- The test labels (`.npy`)
+- The trained model file (`.pt`)
+- The embedding dimension used (e.g., 21 for OneHot)
+- A batch size (e.g., 16)
+
+#### ✅ Example Command
+
+```bash
+python test.py \
+  --test_embeddings test_dataset_seq_OneHot_062215_embeddings.npy \
+  --test_labels test_dataset_seq_OneHot_062215_labels.npy \
+  --model_path best_model_epoch5_training.pt \
+  --embedding_dim 21 \
+  --batch_size 16
+```
+This will output performance metrics such as accuracy, F1 score, MCC, Precisio, Recall, etc and confusion matrix for the test set.
 
 ## 🚀 4 | Running Predictions
 
@@ -121,7 +137,7 @@ To train the model with your dataset, run the training script with the required 
 
 ---
 
-### 📂 1. Preprocessing
+### 📂 4.1| Preprocessing
 It takes a FASTA file as input and performs quality control on the sequences. It removes duplicate sequences,  those longer than 1000 amino acid residues, and  sequences containing non-standard amino acid characters. The module outputs a cleaned FASTA file containing the accepted sequences, along with a text file listing the sequence headers that were removed.
 
 Removes:
@@ -140,7 +156,7 @@ python preprocess.py input_fasta.fasta
 
 ---
 
-### 🔬 2. Embeddings Generation
+### 🔬 4.2| Embeddings Generation
 It computes sequence embeddings from protein sequences using a selected pretrained protein language model (onehot, seqvec, esm or protbert). It requires the user to activate the relevant Conda environment prior to execution (bio_embeddings for onehot, seqvec and esm, bio_transformers for protbert); the environment and its dependencies must be installed beforehand. The module takes the preprocessed FASTA file as input and generates per-sequence embeddings based on the specified model. It outputs two NumPy .npy files: one containing the embeddings and the other containing the corresponding sequence identifiers.
 
 Generates embeddings using the selected model:
@@ -164,7 +180,7 @@ python generate_emb.py --model model_name preprocessed_input.fasta
 
 ---
 
-### 🔍 3. Allergenicity Prediction
+### 🔍 4.3| Allergenicity Prediction
 It uses one of the trained models to classify protein sequences based on their previously generated embeddings. It takes as input two NumPy .npy files: one containing the sequence embeddings and the other containing the corresponding sequence identifiers. The user specifies the embedding model used during embedding generation to ensure compatibility with the correct trained model. The module outputs a CSV file listing the sequence identifiers, their corresponding probability (predicted probability of allergenicity), prediction (predicted class label), and comment where probability higher than 0.8 is considered "High probability allergen", probability between 0.5 and 0.8, "potentially allergen" , and is labeled "probably not allergen" when probability is lower than 0.5.
 
 **Command:**
@@ -180,7 +196,7 @@ python predict.py --model model_name --input_emb embeddings.npy --input_ids sequ
 
 ---
 
-### 🧠 4. Residue Attribution
+### 🧠 4.4| Residue Attribution
 It uses the prediction model and Integrated Gradient to compute attributions to each residue, it returns the sum of raw attribution across embedding dimensions, as well as smoothed attributions and normalized attributions. It outputs a CSV file per sequence listing the residues and their corresponding attributions.
 Applies Integrated Gradients to identify residue-level contributions.
 
@@ -199,7 +215,7 @@ python compute_attribution.py \
 
 ---
 
-### 🧬 5. Motif Construction
+### 🧬 4.5| Motif Construction
 Processes raw attribution scores to identify potential motifs. The user can define parameters such as max_gap (default = 1) and max_motif_length (default = 20). The output consists of two CSV files: one with raw signal data and another with merged motifs, including motif start and end positions, length, and gap-related statistics such as gap_num and gap_density.
 
 **Command:**
@@ -217,7 +233,7 @@ python motif_extract.py \
 
 ---
 
-### 🔗 6. Epitope Alignment
+### 🔗 4.6| Epitope Alignment
 Aligns the extracted motifs to experimentally validated epitopes retrieved from the [Immune Epitope Database (IEDB)](https://www.iedb.org/), using global sequence alignment with a custom scoring scheme:
 
 - Match: +2  

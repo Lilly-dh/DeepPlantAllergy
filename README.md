@@ -13,8 +13,39 @@ DeepPlantAllergy integrates **ESM1b** transformer-based protein embeddings as in
 
 Beyond classification, DeepPlantAllergy offers **interpretability** by pinpointing allergenic regions within protein sequences using **Integrated Gradients**, providing valuable insights into the biological mechanisms of allergenicity.
 
-[Pipeline_new.pdf](https://github.com/user-attachments/files/20186678/Pipeline_new.pdf)
+## ⚙️ Requirements
 
+- **Platform requirement**  
+  We trained and tested the model on Linux OS (Ubuntu). Your operating system must be supported by the deep learning framework and related libraries used by the model. For example, our model was implemented using PyTorch 2.4.0+cu121. Please check PyTorch's official OS compatibility to ensure your OS (e.g., Ubuntu, Windows, macOS) is supported.  
+  *Note: We have not tested the model on Windows or macOS.*
+
+- **Device requirement**  
+  The model was trained on an NVIDIA GeForce RTX 4060 GPU. It is intended to run with GPU acceleration. While it *may* run on CPU if a GPU is not available (`torch.cuda.is_available() == False`), this configuration has not been tested and may result in longer runtimes or unexpected issues.
+
+- **Packages requirement**  
+  - Python ≥ 3.8 (tested on Python 3.12)  
+  - Conda environments including:  
+    - `bio_embeddings`  
+    - `bio_transformers`  
+  Additional dependencies are listed in the `requirements.txt` file.
+
+## 🖥️ Installation
+
+To get started with this project, you can clone the repository and install its dependencies as follows:
+
+```bash
+# Clone the repository
+git clone https://github.com/Lilly-dh/DeepPlantAllergy.git
+
+# Install required Python packages
+pip install -r requirements.txt
+
+To generate embeddings, we recommend installing `bio_embeddings` and `bio_transformers` in separate Conda environments to avoid potential dependency conflicts. However, the model has also been successfully run in the base environment without environment separation.
+
+For more details on installation and usage, please refer to the official repositories:
+
+    bio_embeddings
+    bio_transformers
 
 ## 📌 Overview of Pipeline Steps
 
@@ -153,17 +184,6 @@ python align_epitope.py \
 
 **Output:**
 - Best-matching epitope–motif pair with alignment score
-
----
-
-## ⚙️ Requirements
-
-- Python ≥ 3.8
-- Conda environments:
-  - `bio_embeddings`
-  - `bio_transformers`
-- Dependencies listed requirements
-
 ---
 
 ## 🧾 Citation

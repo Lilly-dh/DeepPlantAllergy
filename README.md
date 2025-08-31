@@ -16,11 +16,13 @@ Beyond classification, DeepPlantAllergy offers **interpretability** by pinpointi
 ## ⚙️ 1- Requirements
 
 - **Platform requirement**  
-  We trained and tested the model on Linux OS (Ubuntu). Your operating system must be supported by the deep learning framework and related libraries used by the model. For example, our model was implemented using PyTorch 2.4.0+cu121. Please check PyTorch's official OS compatibility to ensure your OS (e.g., Ubuntu, Windows, macOS) is supported.  
-  *Note: We have not tested the model on Windows or macOS.*
+  We trained and tested the model on Linux (Ubuntu). Your operating system must be supported by the deep learning framework and related libraries used by the model. Our implementation uses PyTorch 2.4.0 with CUDA 12.1. Please check PyTorch’s official compatibility page to ensure that both your OS (e.g., Ubuntu, Windows, macOS) and your CUDA version are supported.
+
+⚠️ Important: The model requires a CUDA-enabled GPU for training and inference. We have not tested the model on Windows or macOS.
 
 - **Device requirement**  
-  The model was trained on an NVIDIA GeForce RTX 4060 GPU. It is intended to run with GPU acceleration. While it *may* run on CPU if a GPU is not available (`torch.cuda.is_available() == False`), this configuration has not been tested and may result in longer runtimes or unexpected issues.
+  We trained and tested the model on Linux (Ubuntu) with an NVIDIA GeForce RTX 4060 GPU. The model is intended to run only with GPU acceleration. A CUDA-enabled GPU and compatible CUDA installation are required (torch.cuda.is_available() must return True).
+⚠️ Note: Running on CPU-only is not supported and will cause the model to fail. We have not tested the model on Windows or macOS.
 
 - **Packages requirement**  
   - Python ≥ 3.8 (tested on Python 3.12)  
@@ -73,38 +75,26 @@ Your protein sequences must be provided in a **CSV** file with the following col
 The module takes the formatted CSV file as input and generates per-sequence embeddings based on the specified model. It outputs one compressed NumPy array file .npz containing the embeddings, the corresponding sequence identifiers and corresponding labels.
 
 ```bash
-python generate_emb.py --model Model_name sequence.csv
+python generate_embeddings.py --model Model_name filename.csv
 ```
 Replace Model_name with one of the supported embedding models (OneHot, SeqVec, ProtBert, ESM) and sequence.csv with your formatted input file.
 
-This script will generate the following .npy files:
+This script will generate the following .npz file:
 
-    filename_Model_name_<timestamp>_data.npz — Sequence embeddings
+    filename_Model_name_<timestamp>_data.npz
 
 These output files are required as inputs for the training and testing stages.
 
 ### 📚 3.2 | Training
 
-To train the model with your dataset, run the training script with the required arguments, embedding_dim should be provided depending on the embedding model (OneHot → 21, SeqVec → 1024, ProtBert → 1024, ESM → 1280). 
+To train the model with your own dataset, run the training script and specify the necessary arguments. The most important one is --embedding_dim, which must match the embedding model you used during preprocessing (OneHot = 21, SeqVec = 1024, ProtBert = 1024, ESM = 1280).
 
---train_data: Path to the training dataset (.npz file from embedding step).
---val_data: Path to the validation dataset (.npz file).
---batch_size: Number of samples per training batch (default: 16).
---learning_rate: Learning rate for optimization (default: 5e-6).
---weight_decay: Weight decay (L2 regularization) to prevent overfitting (default: 0).
---num_epochs: Number of training epochs (default: 100).
---embedding_dim: Size of the embeddings (depends on embedding model).
---model_type: Model architecture. Options:
+You will also need to provide the paths to your training and validation datasets (both in .npz format, generated during the embedding step). Training parameters such as batch size (default: 16), learning rate (default: 5e-6), weight decay for regularization (default: 0), and the number of epochs (default: 100) can be customized through their respective arguments.
 
-- full → CNN + LSTM + Attention
-- no_cnn → remove CNN
-- no_lstm → remove LSTM
-- no_attention → remove Attention
-
---seed: Random seed for reproducibility (default: 42).
+The script also allows you to choose the model architecture via the --model_type flag. Options include the full model (CNN + LSTM + Attention), or ablation variants where one of these components is removed (no_cnn, no_lstm, no_attention). Finally, you can set a random seed (default: 42) to ensure reproducibility of results.
 
 ```bash
-python train.py --train_data path/to/train_data.npz \
+python training.py --train_data path/to/train_data.npz \
                 --val_data path/to/val_data.npz \
                 --batch_size 16 \
                 --learning_rate 0.000005 \
@@ -116,25 +106,14 @@ python train.py --train_data path/to/train_data.npz \
 ```
 ### 📈 3.3| Testing
 
-After training, you can evaluate the model’s performance on a test set using the `test.py` script. Make sure to provide:
+After training, you can evaluate the model on a held-out test set using the test.py script. To do this, provide the path to your test dataset (in .npz format), the trained model file (saved as .pt), and the embedding dimension that matches your embedding model (e.g., 21 for OneHot, 1024 for SeqVec or ProtBert, 1280 for ESM).
 
-- The test data (`.npz`)
-- The trained model file (`.pt`)
-- The embedding dimension used (e.g., 21 for OneHot)
-- A batch size (e.g., 16)
-- The model type : full, no_cnn, no_lstm , no_attention
-- The seed (42 is default)
+You can also adjust the batch size (default: 16) and specify which architecture to evaluate (full, no_cnn, no_lstm, or no_attention). For reproducibility, the script accepts a random seed argument (default: 42).
 
 #### ✅ Example Command
 
 ```bash
-python test.py \
-  --test_data *_data.npz \
-  --model_path best_model.pt \
-  --embedding_dim 21 \
-  --batch_size 16 \
-  --model_type full \
-  --seed 42
+python testing.py --test_data *_data.npz  --model_path best_model.pt  --embedding_dim 21  --batch_size 16  --model_type full  --seed 42
 ```
 This will output performance metrics such as accuracy, F1 score, MCC, Precisio, Recall, etc and confusion matrix for the test set in a file "model_name_metrics.csv", and a file "model_name_predictions.csv" for per-sequence predictions
 
@@ -144,11 +123,10 @@ This will output performance metrics such as accuracy, F1 score, MCC, Precisio, 
 | Step | Description | Script |
 |------|-------------|--------|
 | 1️⃣ | **Preprocessing** of raw FASTA sequences (removes duplicates, long or invalid entries) | `preprocess.py` |
-| 2️⃣ | **Embeddings Generation** using protein language models (OneHot, SeqVec, ESM-1b, ProtBert) | `generate_emb.py` |
-| 3️⃣ | **Allergenicity Prediction** using trained models | `predict.py` |
-| 4️⃣ | **Residue Attribution Computation** using Integrated Gradients | `compute_attribution.py` |
-| 5️⃣ | **Motif Construction** from high-attribution residues | `motif_extract.py` |
-
+| 2️⃣ | **Embeddings Generation** using protein language models (OneHot, SeqVec, ESM-1b, ProtBert) | `generate_embeddings.py` |
+| 3️⃣ | **Allergenicity Prediction** using trained models | `prediction.py` |
+| 4️⃣ | **Residue Attribution Computation** using Integrated Gradients | `residue_attribution.py` |
+| 5️⃣ | **Motif Construction** from high-attribution residues | `motif_extractor.py` |
 ---
 
 ### 📂 4.1| Preprocessing
@@ -170,7 +148,7 @@ python preprocess.py input_fasta.fasta
 ---
 
 ### 🔬 4.2| Embeddings Generation
-It computes sequence embeddings from protein sequences using a selected pretrained protein language model (onehot, seqvec, esm or protbert). It requires the user to activate the relevant Conda environment prior to execution (bio_embeddings for onehot, seqvec and esm, bio_transformers for protbert); the environment and its dependencies must be installed beforehand. The module takes the preprocessed FASTA file as input and generates per-sequence embeddings based on the specified model. It outputs a compressed NumPy array .npz file containing the embeddings and the corresponding sequence identifiers.
+It computes sequence embeddings from protein sequences using a selected pretrained protein language model (onehot, seqvec, esm or protbert). It requires the user to activate the relevant Conda environment prior to execution (bio_embeddings for onehot, seqvec and esm, bio_transformers for protbert); the environment and its dependencies must be installed beforehand. The module takes the preprocessed FASTA file as input and generates per-sequence embeddings based on the specified model. It outputs a compressed NumPy array (.npz) file containing the embeddings and the corresponding sequence identifiers.
 
 Generates embeddings using the selected model:
 - `OneHot`
@@ -184,11 +162,11 @@ Generates embeddings using the selected model:
 
 **Command:**
 ```bash
-python generate_emb.py --model model_name preprocessed_input.fasta
+python generate_embeddings.py --model model_name preprocessed_input.fasta
 ```
 
 **Outputs:**
-- `filename_model_timestamp_data_.npz`
+- `filename_model_timestamp_data.npz`
 
 ---
 
@@ -199,7 +177,7 @@ The module outputs a CSV file listing the sequence identifiers, their correspond
 
 **Command:**
 ```bash
-python predict.py \
+python prediction.py \
     --embedding seqvec \
     --model_type full \
     --input *.npz
@@ -216,35 +194,31 @@ python predict.py \
 ---
 
 ### 🧠 4.4| Residue Attribution
-It uses the prediction model and Integrated Gradient to compute attributions to each residue, it returns the sum of raw attribution across embedding dimensions, as well as smoothed attributions and normalized attributions. It outputs a CSV file per sequence listing the residues and their corresponding attributions. The code uses automatically window-size=11 for smoothing.
+It uses the prediction model and Integrated Gradient to compute attributions to each residue, it returns the sum of raw attribution across embedding dimensions, as well as smoothed attributions and normalized attributions. It outputs one CSV per sequence listing each residue along with the sum and mean of attributions across embedding dimensions.
 
 **Command:**
 ```bash
-python compute_attribution.py \
-  --fasta_file preprocessed_input.fasta \
-  --prediction_file predictions.csv \
-  --embedding_file embeddings.npy \
-  --output_dir attribution_output/ \
-  --model_name model_name
+python residue_attribution.py --fasta_file  --embedding_file filename.npz --output_dir --embedding_type [OneHot, SeqVec, ProtBert, or ESM] \
+    --model_type [full, no_cnn, no_lstm, or no_attention] --seed (default: 42)
 ```
 
 **Outputs:**
-- One CSV per sequence with raw, smoothed, and normalized attribution scores
+- One CSV per sequence with aggregated and averaged attribution scores
 
 ---
 
 ### 🧬 4.5| Motif Construction
-Processes raw attribution scores to identify potential motifs. The user can define parameters such as max_gap (default = 1) and max_motif_length (default = 20). The output consists of two CSV files: one with raw signal data and another with merged motifs, including motif start and end positions, length, and gap-related statistics such as gap_num and gap_density.
+It processes raw per-residue attribution scores to identify potential motifs. Attribution scores from a CSV are smoothed using a configurable window, and residues above a chosen threshold are selected to define contiguous segments meeting a minimum length. For each motif, the script computes the average attribution and saves all results—including embedding, model type, window size, positions, sequence, and average attribution—to a CSV. It also generates a heatmap PNG showing motif coverage across the sequence for the specified embedding and model.
 
 **Command:**
 ```bash
-python motif_extract.py \
-  --attribution_file attributions.csv \
+python motif_extractor.py  --csv attribution_example.csv   --windows 5 7 9 11  --threshold percentile --percentile 80  --seq-len 150  --min-len 3    --output motifs_output.csv
+
 ```
 
 **Outputs:**
-- Raw signal file
-- Merged motif file with positions, lengths, gaps
+- CSV of motifs extracted with their start and end position, average attribution score and Model name, embedding and window size.
+- Heatmap of motif coverage
 
 ---
 

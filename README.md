@@ -70,7 +70,7 @@ Your protein sequences must be provided in a **CSV** file with the following col
 
 #### Generating Embeddings
 
-The module takes the formatted CSV file as input and generates per-sequence embeddings based on the specified model. It outputs three NumPy .npy files: one containing the embeddings, one containing the corresponding sequence identifiers and the other containing the corresponding labels.
+The module takes the formatted CSV file as input and generates per-sequence embeddings based on the specified model. It outputs one compressed NumPy array file .npz containing the embeddings, the corresponding sequence identifiers and corresponding labels.
 
 ```bash
 python generate_emb.py --model Model_name sequence.csv
@@ -79,49 +79,64 @@ Replace Model_name with one of the supported embedding models (OneHot, SeqVec, P
 
 This script will generate the following .npy files:
 
-    *_embeddings.npy — Sequence embeddings
-
-    *_labels.npy — Corresponding labels
-
-    *_ids.npy — Sequence identifiers
+    filename_Model_name_<timestamp>_data.npz — Sequence embeddings
 
 These output files are required as inputs for the training and testing stages.
 
 ### 📚 3.2 | Training
 
-To train the model with your dataset, run the training script with the required arguments, embedding_dim should be provided depending on the embedding model (OneHot → 21, SeqVec → 1024, ProtBert → 1024, ESM → 1280). For example:
+To train the model with your dataset, run the training script with the required arguments, embedding_dim should be provided depending on the embedding model (OneHot → 21, SeqVec → 1024, ProtBert → 1024, ESM → 1280). 
+
+--train_data: Path to the training dataset (.npz file from embedding step).
+--val_data: Path to the validation dataset (.npz file).
+--batch_size: Number of samples per training batch (default: 16).
+--learning_rate: Learning rate for optimization (default: 5e-6).
+--weight_decay: Weight decay (L2 regularization) to prevent overfitting (default: 0).
+--num_epochs: Number of training epochs (default: 100).
+--embedding_dim: Size of the embeddings (depends on embedding model).
+--model_type: Model architecture. Options:
+
+- full → CNN + LSTM + Attention
+- no_cnn → remove CNN
+- no_lstm → remove LSTM
+- no_attention → remove Attention
+
+--seed: Random seed for reproducibility (default: 42).
 
 ```bash
-python train.py --train_embs path/to/train_embeddings.npy \
-                --train_labels path/to/train_labels.npy \
-                --test_embs path/to/test_embeddings.npy \
-                --test_labels path/to/test_labels.npy \
+python train.py --train_data path/to/train_data.npz \
+                --val_data path/to/val_data.npz \
                 --batch_size 16 \
-                --learning_rate 0.001 \
+                --learning_rate 0.000005 \
+                --weight_decay 0 \
                 --num_epochs 50 \
                 --embedding_dim 1024
+                --model_type full \
+                --seed 42
 ```
 ### 📈 3.3| Testing
 
 After training, you can evaluate the model’s performance on a test set using the `test.py` script. Make sure to provide:
 
-- The test embeddings (`.npy`)
-- The test labels (`.npy`)
+- The test data (`.npz`)
 - The trained model file (`.pt`)
 - The embedding dimension used (e.g., 21 for OneHot)
 - A batch size (e.g., 16)
+- The model type : full, no_cnn, no_lstm , no_attention
+- The seed (42 is default)
 
 #### ✅ Example Command
 
 ```bash
 python test.py \
-  --test_embeddings test_dataset_seq_OneHot_062215_embeddings.npy \
-  --test_labels test_dataset_seq_OneHot_062215_labels.npy \
-  --model_path best_model_epoch5_training.pt \
+  --test_data *_data.npz \
+  --model_path best_model.pt \
   --embedding_dim 21 \
-  --batch_size 16
+  --batch_size 16 \
+  --model_type full \
+  --seed 42
 ```
-This will output performance metrics such as accuracy, F1 score, MCC, Precisio, Recall, etc and confusion matrix for the test set.
+This will output performance metrics such as accuracy, F1 score, MCC, Precisio, Recall, etc and confusion matrix for the test set in a file "model_name_metrics.csv", and a file "model_name_predictions.csv" for per-sequence predictions
 
 ## 🚀 4 | Running Predictions
 
@@ -133,17 +148,15 @@ This will output performance metrics such as accuracy, F1 score, MCC, Precisio, 
 | 3️⃣ | **Allergenicity Prediction** using trained models | `predict.py` |
 | 4️⃣ | **Residue Attribution Computation** using Integrated Gradients | `compute_attribution.py` |
 | 5️⃣ | **Motif Construction** from high-attribution residues | `motif_extract.py` |
-| 6️⃣ | **Epitope Alignment** against IEDB validated epitopes | `align_epitope.py` |
 
 ---
 
 ### 📂 4.1| Preprocessing
-It takes a FASTA file as input and performs quality control on the sequences. It removes duplicate sequences,  those longer than 1000 amino acid residues, and  sequences containing non-standard amino acid characters. The module outputs a cleaned FASTA file containing the accepted sequences, along with a text file listing the sequence headers that were removed.
+It takes a FASTA file as input and performs quality control on the sequences. It removes duplicate sequences and those longer than 1000 amino acid residues. The module outputs a cleaned FASTA file containing the accepted sequences, along with a text file listing the sequence headers that were removed.
 
 Removes:
 - Duplicate sequences
 - Sequences > 1000 amino acids
-- Sequences with non-standard amino acids
 
 **Command:**
 ```bash
@@ -157,13 +170,13 @@ python preprocess.py input_fasta.fasta
 ---
 
 ### 🔬 4.2| Embeddings Generation
-It computes sequence embeddings from protein sequences using a selected pretrained protein language model (onehot, seqvec, esm or protbert). It requires the user to activate the relevant Conda environment prior to execution (bio_embeddings for onehot, seqvec and esm, bio_transformers for protbert); the environment and its dependencies must be installed beforehand. The module takes the preprocessed FASTA file as input and generates per-sequence embeddings based on the specified model. It outputs two NumPy .npy files: one containing the embeddings and the other containing the corresponding sequence identifiers.
+It computes sequence embeddings from protein sequences using a selected pretrained protein language model (onehot, seqvec, esm or protbert). It requires the user to activate the relevant Conda environment prior to execution (bio_embeddings for onehot, seqvec and esm, bio_transformers for protbert); the environment and its dependencies must be installed beforehand. The module takes the preprocessed FASTA file as input and generates per-sequence embeddings based on the specified model. It outputs a compressed NumPy array .npz file containing the embeddings and the corresponding sequence identifiers.
 
 Generates embeddings using the selected model:
-- `onehot`
-- `seqvec`
-- `esm`
-- `protbert`
+- `OneHot`
+- `SeqVec`
+- `ESM`
+- `ProtBert`
 
 > ⚠️ Requires activation of the appropriate Conda environment:
 > - `bio_embeddings` for OneHot, SeqVec, ESM
@@ -175,17 +188,23 @@ python generate_emb.py --model model_name preprocessed_input.fasta
 ```
 
 **Outputs:**
-- `embeddings.npy`
-- `sequence_ids.npy`
+- `filename_model_timestamp_data_.npz`
 
 ---
 
 ### 🔍 4.3| Allergenicity Prediction
-It uses one of the trained models to classify protein sequences based on their previously generated embeddings. It takes as input two NumPy .npy files: one containing the sequence embeddings and the other containing the corresponding sequence identifiers. The user specifies the embedding model used during embedding generation to ensure compatibility with the correct trained model. The module outputs a CSV file listing the sequence identifiers, their corresponding probability (predicted probability of allergenicity), prediction (predicted class label), and comment where probability higher than 0.8 is considered "High probability allergen", probability between 0.5 and 0.8, "potentially allergen" , and is labeled "probably not allergen" when probability is lower than 0.5.
+It uses one of the trained models to classify protein sequences based on their previously generated embeddings. It takes as input the .npz data file previosuly generated. The user specifies the embedding model used during embedding generation to ensure compatibility with the correct trained model. 
+The user can choose from 16 available model configurations (full, no_cnn, no_lstm and no_attention) and embeddings (Onehot, Seqvec, ESM and Protbert). 
+The module outputs a CSV file listing the sequence identifiers, their corresponding probability (predicted probability of allergenicity), prediction (predicted class label), and comment where probability higher than 0.8 is considered "High probability allergen", probability between 0.5 and 0.8, "potentially allergen" , and is labeled "probably not allergen" when probability is lower than 0.5.
 
 **Command:**
 ```bash
-python predict.py --model model_name --input_emb embeddings.npy --input_ids sequence_ids.npy
+python predict.py \
+    --embedding seqvec \
+    --model_type full \
+    --input *.npz
+    --batch_size 16 \
+    --seed 42 
 ```
 
 **Outputs (CSV):**
@@ -197,8 +216,7 @@ python predict.py --model model_name --input_emb embeddings.npy --input_ids sequ
 ---
 
 ### 🧠 4.4| Residue Attribution
-It uses the prediction model and Integrated Gradient to compute attributions to each residue, it returns the sum of raw attribution across embedding dimensions, as well as smoothed attributions and normalized attributions. It outputs a CSV file per sequence listing the residues and their corresponding attributions.
-Applies Integrated Gradients to identify residue-level contributions.
+It uses the prediction model and Integrated Gradient to compute attributions to each residue, it returns the sum of raw attribution across embedding dimensions, as well as smoothed attributions and normalized attributions. It outputs a CSV file per sequence listing the residues and their corresponding attributions. The code uses automatically window-size=11 for smoothing.
 
 **Command:**
 ```bash
@@ -222,45 +240,12 @@ Processes raw attribution scores to identify potential motifs. The user can defi
 ```bash
 python motif_extract.py \
   --attribution_file attributions.csv \
-  --threshold 0 \
-  --max_gap 1 \
-  --max_motif_length 20
 ```
 
 **Outputs:**
 - Raw signal file
 - Merged motif file with positions, lengths, gaps
 
----
-
-### 🔗 4.6| Epitope Alignment
-Aligns the extracted motifs to experimentally validated epitopes retrieved from the [Immune Epitope Database (IEDB)](https://www.iedb.org/), using global sequence alignment with a custom scoring scheme:
-
-- Match: +2  
-- Mismatch: –1  
-- Gap opening: –2  
-- Gap extension: –0.5  
-
-The user provides the CSV file of extracted motifs along with the IEDB Immunome Browser export table for the target protein. The output includes the best-matching epitope–motif pair along with the following metrics:
-
-- **Gap Density**:  
-  Proportion of residues within a motif that have negative attribution scores, indicating gaps. A higher gap density suggests a more fragmented and less cohesive motif.
-
-- **Epitope Coverage**:  
-  Fraction of epitope residues aligned with the motif. This measures how well the motif spans the epitope, even with gaps.
-
-- **Motif-to-Epitope Ratio**:  
-  Ratio of the motif's length to the epitope’s length. This reflects whether the motif is appropriately sized relative to the target and serves as an indirect indicator of model precision.
-
-**Command:**
-```bash
-python align_epitope.py \
-  --motif_csv motifs.csv \
-  --iedb_csv iedb_export.csv
-```
-
-**Output:**
-- Best-matching epitope–motif pair with alignment score
 ---
 
 ## 🧾 Citation

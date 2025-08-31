@@ -7,20 +7,6 @@ def read_fasta(fasta_file):
     """Read sequences from a FASTA file and return a list of (ID, sequence) tuples."""
     return [(record.id, str(record.seq)) for record in SeqIO.parse(fasta_file, "fasta")]
 
-def find_and_remove_non_standard_sequences(sequences):
-    """Identify and remove sequences containing non-standard amino acids."""
-    standard_amino_acids = set("ACDEFGHIKLMNPQRSTVWY")
-    clean_sequences = []
-    removed_non_standard = []
-
-    for seq_id, seq in sequences:
-        if any(aa.upper() not in standard_amino_acids for aa in seq):
-            removed_non_standard.append(seq_id)
-        else:
-            clean_sequences.append((seq_id, seq))
-    
-    return clean_sequences, removed_non_standard
-
 def remove_duplicates(sequences):
     """Remove duplicate sequences based on sequence IDs."""
     seen = set()
@@ -59,7 +45,7 @@ def generate_timestamp():
     return datetime.now().strftime("%H%M%S")
 
 def main():
-    parser = argparse.ArgumentParser(description="Preprocess a FASTA file by removing duplicates, filtering by length, and removing sequences with non-standard amino acids.")
+    parser = argparse.ArgumentParser(description="Preprocess a FASTA file by removing duplicates and filtering by length.")
     parser.add_argument("input_fasta", help="Path to the input FASTA file")
     parser.add_argument("--max_length", type=int, default=1000, help="Maximum allowed sequence length (default: 1000)")
     
@@ -80,13 +66,8 @@ def main():
     total_sequences = len(sequences_list)
     print(f"Total sequences before processing: {total_sequences}")
 
-    # Remove sequences with non-standard amino acids
-    cleaned_sequences, removed_non_standard = find_and_remove_non_standard_sequences(sequences_list)
-    num_non_standard = len(removed_non_standard)
-    print(f"Sequences with non-standard amino acids removed: {num_non_standard}")
-
     # Remove duplicates
-    unique_sequences, removed_duplicates = remove_duplicates(cleaned_sequences)
+    unique_sequences, removed_duplicates = remove_duplicates(sequences_list)
     num_duplicates = len(removed_duplicates)
     print(f"Duplicate sequences removed: {num_duplicates}")
 
@@ -100,14 +81,13 @@ def main():
     print(f"Preprocessed sequences saved to {output_file_name}")
 
     # Save removed headers to a dynamically named text file
-    save_removed_headers(removed_duplicates + removed_long_ids + removed_non_standard, removed_headers_file_name)
+    save_removed_headers(removed_duplicates + removed_long_ids, removed_headers_file_name)
     print(f"List of removed sequence headers saved to {removed_headers_file_name}")
 
     # Print final statistics
     print("\n--- Processing Summary ---")
     print(f"Total sequences before processing: {total_sequences}")
     print(f"Duplicate sequences removed: {num_duplicates}")
-    print(f"Sequences with non-standard amino acids removed: {num_non_standard}")
     print(f"Sequences longer than {args.max_length} removed: {num_long}")
     print(f"Total sequences after processing: {len(filtered_sequences)}")
 

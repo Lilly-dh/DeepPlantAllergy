@@ -68,19 +68,26 @@ def read_sequences(file_path):
     return seq_ids, sequences, labels
 
 # Step 4: Save embeddings and sequence IDs
-def save_embeddings(embeddings, seq_ids, labels, output_prefix):
+def save_embeddings_npz(embeddings, seq_ids, labels, output_prefix):
     embeddings_array = np.stack([pad_embeddings(np.array(embedding)) for embedding in embeddings])
-    
-    # Adding a timestamp to the output file names
     timestamp = time.strftime("%H%M%S")
 
-    np.save(f"{output_prefix}_{timestamp}_embeddings.npy", embeddings_array)
-    np.save(f"{output_prefix}_{timestamp}_sequence_ids.npy", np.array(seq_ids))
-    
+    # Save embeddings, sequence IDs, and optionally labels in ONE compressed .npz file
     if labels is not None:
-        np.save(f"{output_prefix}_{timestamp}_labels.npy", np.array(labels))
+        np.savez_compressed(
+            f"{output_prefix}_{timestamp}_data.npz",
+            embeddings=embeddings_array,
+            sequence_ids=np.array(seq_ids),
+            labels=np.array(labels)
+        )
+    else:
+        np.savez_compressed(
+            f"{output_prefix}_{timestamp}_data.npz",
+            embeddings=embeddings_array,
+            sequence_ids=np.array(seq_ids)
+        )
     
-    print(f"✅ Embeddings, sequence IDs, and labels saved as {output_prefix}_{timestamp}_*.npy")
+    print(f"✅ Embeddings, sequence IDs, and labels saved as {output_prefix}_{timestamp}_data.npz")
 
 
 # Step 5: Main function
@@ -111,7 +118,7 @@ def main():
         embeddings = embed_with_onehot(sequences)
     
     # Save the embeddings and sequence IDs
-    save_embeddings(embeddings, seq_ids, labels, output_prefix)
+    save_embeddings_npz(embeddings, seq_ids, labels, output_prefix)
 
 if __name__ == "__main__":
     main()

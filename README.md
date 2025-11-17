@@ -224,4 +224,4 @@ python motif_extractor.py  --csv attribution_example.csv   --windows 5 7 9 11  -
 
 ## 🧾 Citation
 
-If you use this pipeline in your research, please cite our upcoming manuscript submitted to *Journal Name*.
+If you use this pipeline in your research, please cite our manuscript published in *Briefings in Bioinformatics* https://academic.oup.com/bib/article/26/6/bbaf605/8323196.
